@@ -1,0 +1,16 @@
+[managers]
+%{ for index, ipv4 in manager_addresses ~}
+${manager_labels[index]} ansible_host=${ipv4}
+%{ endfor ~}
+
+[workers]
+%{ for index, ipv4 in worker_addresses ~}
+${worker_labels[index]} ansible_host=${ipv4}
+%{ endfor ~}
+
+[swarm:children]
+managers
+workers
+
+[all:vars]
+ansible_ssh_common_args="-o StrictHostKeyChecking=accept-new"

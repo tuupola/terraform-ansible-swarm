@@ -1,0 +1,95 @@
+---
+- hosts: all
+  become: true
+
+  name: Install and start Docker CE
+  tasks:
+    - name: Add Docker CE repository
+      shell: dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+      args:
+        creates: /etc/yum.repos.d/docker-ce.repo
+
+    - name: Install Docker
+      ansible.builtin.dnf:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+          - python3
+          - python3-pip
+        state: present
+      notify: Start and enable docker
+
+    - name: Install Docker Python dependencies
+      ansible.builtin.pip:
+        name: docker
+        state: present
+
+    - name: Ensure group "docker" exists
+      ansible.builtin.group:
+        name: docker
+        state: present
+
+    - name: Ensure "ansible" user belongs to "docker" group
+      user:
+        name: ansible
+        groups: docker
+        append: true
+
+  handlers:
+    - name: Start and enable docker
+      systemd:
+        name: docker
+        state: started
+        enabled: true
+
+- hosts: managers
+  become: true
+
+  name: Initialise the Docker swarm
+  tasks:
+    - name: Initialise the Docker swarm in the first manager
+      run_once: true
+      community.docker.docker_swarm:
+        state: present
+        advertise_addr: eth1
+      register: swarm
+      vars:
+        first_manager_ip: ansible_host
+
+    - name: Print the public ip address
+      ansible.builtin.debug:
+        var: ansible_eth0.ipv4.address
+
+    - name: Print the VLAN ip address
+      ansible.builtin.debug:
+        var: ansible_eth1.ipv4.address
+
+    - name: Print the swarm facts
+      ansible.builtin.debug:
+        var: hostvars[groups['managers'][0]].swarm
+
+    - name: Join the other managers to the swarm
+      community.docker.docker_swarm:
+        state: join
+        advertise_addr: eth1
+        join_token: "{{ hostvars[groups['managers'][0]].swarm.swarm_facts.JoinTokens.Manager }}"
+        #join_token: "{{ swarm.swarm_facts.JoinTokens.Manager }}"
+        #join_token: "{{ hostvars['localhost'].manager_token }}"
+        #remote_addrs: [ "{{ hostvars['node-01'].ansible_eth1.ipv4.address }}" ]
+        remote_addrs: [ "{{ hostvars[groups['managers'][0]]['ansible_eth1']['ipv4']['address'] }}" ]
+
+- hosts: workers
+  become: true
+
+  name: Join workers to the swarm
+  tasks:
+    - name: Join the swarm
+      community.docker.docker_swarm:
+        state: join
+        advertise_addr: eth1
+        #join_token: "{{ hostvars['node-01'].swarm.swarm_facts.JoinTokens.Worker }}"
+        #join_token: "{{ swarm.swarm_facts.JoinTokens.Manager }}"
+        join_token: "{{ hostvars[groups['managers'][0]].swarm.swarm_facts.JoinTokens.Worker }}"
+        remote_addrs: [ "{{ hostvars[groups['managers'][0]]['ansible_eth1']['ipv4']['address'] }}" ]

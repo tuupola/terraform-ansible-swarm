@@ -1,0 +1,13 @@
+---
+- hosts: all
+  become: true
+
+  name: DNF package upgrades
+  tasks:
+    - name: Upgrade all except Docker packages to latest
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        exclude:
+          - docker-*
+          - containerd.io

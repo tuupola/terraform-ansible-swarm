@@ -1,0 +1,55 @@
+---
+- hosts: all
+  become: true
+
+  name: Setup firewall
+  tasks:
+    - name: Make sure firewalld is running
+      systemd:
+        name: firewalld
+        state: started
+        enabled: true
+
+    - name: Disable cockpit traffic
+      ansible.posix.firewalld:
+        service: cockpit
+        permanent: true
+        state: disabled
+        immediate: true
+
+    # - name: Disable DHCPV6 traffic
+    #   ansible.posix.firewalld:
+    #     service: dhcpv6-client
+    #     permanent: true
+    #     state: disabled
+    #     immediate: true
+
+    - name: Enable https traffic
+      ansible.posix.firewalld:
+        service: https
+        permanent: true
+        state: enabled
+        immediate: true
+
+    - name: Enable http traffic
+      ansible.posix.firewalld:
+        service: http
+        permanent: true
+        state: enabled
+        immediate: true
+
+    - name: Trust all traffic in VLAN (10.0.0.0/24)
+      ansible.posix.firewalld:
+        zone: trusted
+        source: 10.0.0.0/24
+        permanent: true
+        state: enabled
+        immediate: true
+
+    # - name: Enable Docker swarm traffic in internal zone
+    #   ansible.posix.firewalld:
+    #     service: docker-swarm
+    #     zone: internal
+    #     permanent: true
+    #     state: enabled
+    #     immediate: true

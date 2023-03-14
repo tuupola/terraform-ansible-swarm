@@ -1,0 +1,62 @@
+---
+- hosts: all
+  gather_facts: false
+  tasks:
+    - name: Test SSH connection with the default user
+      ping:
+      ignore_unreachable: true
+      ignore_errors: true
+      changed_when: false
+      register: ssh_test
+
+    - name: "Fall back to root user when needed"
+      when: ssh_test.unreachable is defined
+      connection: local
+      set_fact:
+        ansible_ssh_user: root
+
+- hosts: all
+  become: true
+
+  vars:
+    initial_user: ansible
+    initial_ssh_public_key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/ansible_ed25519.pub') }}"
+
+  name: Initial setup
+  tasks:
+    - name: Create {{ initial_user }} user in the wheel group
+      user:
+        name: "{{ initial_user }}"
+        state: present
+        groups: wheel
+        append: true
+        create_home: true
+
+    - name: Copy public key for the {{ initial_user }} user
+      ansible.posix.authorized_key:
+        user: "{{ initial_user }}"
+        state: present
+        key: "{{ initial_ssh_public_key }}"
+
+    - name: Allow passwordless sudo for wheel group
+      community.general.sudoers:
+        name: test
+        state: present
+        group: wheel
+        commands: ALL
+        nopassword: true
+
+    - name: Disable remote login for root
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        state: present
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+        backup: true
+      notify: Restart sshd
+
+  handlers:
+    - name: Restart sshd
+      systemd:
+        name: sshd
+        state: restarted

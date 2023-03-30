@@ -1,11 +1,15 @@
 [managers]
-%{ for index, ipv4 in manager_addresses ~}
-${manager_labels[index]} ansible_host=${ipv4}
+%{ for key, value in nodes ~}
+%{ if value.tags.*[0] == "manager" ~}
+${key} ansible_host=${value.ip_address}
+%{ endif ~}
 %{ endfor ~}
 
 [workers]
-%{ for index, ipv4 in worker_addresses ~}
-${worker_labels[index]} ansible_host=${ipv4}
+%{ for key, value in nodes ~}
+%{ if value.tags.*[0] == "worker" ~}
+${key} ansible_host=${value.ip_address}
+%{ endif ~}
 %{ endfor ~}
 
 [swarm:children]
@@ -14,3 +18,4 @@ workers
 
 [all:vars]
 ansible_ssh_common_args="-o StrictHostKeyChecking=accept-new"
+ansible_python_interpreter=/usr/bin/python3

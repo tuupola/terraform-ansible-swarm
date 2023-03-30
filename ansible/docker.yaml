@@ -4,6 +4,13 @@
 
   name: Install and start Docker CE
   tasks:
+    - name: Uninstall Podman
+      ansible.builtin.dnf:
+        name:
+          - podman
+          - podman-*
+        state: absent
+
     - name: Add Docker CE repository
       shell: dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
       args:

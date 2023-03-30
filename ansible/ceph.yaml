@@ -1,0 +1,48 @@
+---
+- hosts: all
+  become: true
+
+  name: Install CEPH
+  tasks:
+    - name: Add Ceph $basearch repository
+      ansible.builtin.yum_repository:
+        name: ceph
+        description: Ceph $basearch
+        baseurl: https://download.ceph.com/rpm-quincy/el8/$basearch
+        file: ceph
+        gpgkey: https://download.ceph.com/keys/release.asc
+        gpgcheck: true
+        enabled: true
+
+    - name: Add Ceph noarch repository
+      ansible.builtin.yum_repository:
+        name: ceph-noarch
+        description: Ceph noarch
+        baseurl: https://download.ceph.com/rpm-quincy/el8/noarch
+        file: ceph
+        gpgkey: https://download.ceph.com/keys/release.asc
+        gpgcheck: true
+        enabled: true
+
+    - name: Add Ceph source repository
+      ansible.builtin.yum_repository:
+        name: ceph-source
+        description: Ceph SRPMS
+        baseurl: https://download.ceph.com/rpm-quincy/el8/SRPMS
+        file: ceph
+        gpgkey: https://download.ceph.com/keys/release.asc
+        gpgcheck: true
+        enabled: true
+
+    - name: Add EPEL repository
+      ansible.builtin.dnf:
+        name:
+          - epel-release
+        state: present
+
+    - name: Install cephadm and ceph-common
+      ansible.builtin.dnf:
+        name:
+          - cephadm
+          - ceph-common
+        state: present

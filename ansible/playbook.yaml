@@ -2,4 +2,4 @@
 - import_playbook: upgrade.yaml
 - import_playbook: firewall.yaml
 - import_playbook: docker.yaml
-#- import_playbook: ceph.yaml
+- import_playbook: ceph.yaml

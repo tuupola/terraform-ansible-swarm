@@ -68,6 +68,17 @@
         state: disabled
         immediate: true
 
+    - name: Check for /etc/ceph/ceph.conf
+      stat:
+        path: /etc/ceph/ceph.conf
+      register: ceph_conf
+
+    - name: Bootstap CEPH cluster
+      ansible.builtin.shell: cephadm bootstrap --mon-ip 10.0.0.1 --ssh-user ansible --skip-dashboard --skip-monitoring-stack --skip-firewalld
+      delegate_to: manager-01
+      run_once: true
+      when: not ceph_conf.stat.exists
+
     - name: Get ceph.pub contents
       ansible.builtin.shell: cat /etc/ceph/ceph.pub
       register: ceph_pub
@@ -105,6 +116,10 @@
         state: directory
         mode: '0755'
 
+    - name: Wait for CEPH "shared" volume to become available
+      ansible.builtin.wait_for:
+        timeout: 30
+
     - name: Mount the CEPH "shared" volume
       ansible.posix.mount:
         src: admin@.shared=/
@@ -112,3 +127,9 @@
         opts: mon_addr=10.0.0.1:6789,noatime,_netdev
         state: mounted
         fstype: ceph
+
+
+        # register: result
+        # until: result.rc == 0
+        # retries: 6
+        # delay: 10

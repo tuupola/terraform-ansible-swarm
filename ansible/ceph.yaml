@@ -4,7 +4,7 @@
 
   name: Install CEPH
   tasks:
-    - name: Add Ceph $basearch repository
+    - name: Add CEPH $basearch repository
       ansible.builtin.yum_repository:
         name: ceph
         description: Ceph $basearch
@@ -14,7 +14,7 @@
         gpgcheck: true
         enabled: true
 
-    - name: Add Ceph noarch repository
+    - name: Add CEPH noarch repository
       ansible.builtin.yum_repository:
         name: ceph-noarch
         description: Ceph noarch
@@ -24,7 +24,7 @@
         gpgcheck: true
         enabled: true
 
-    - name: Add Ceph source repository
+    - name: Add CEPH source repository
       ansible.builtin.yum_repository:
         name: ceph-source
         description: Ceph SRPMS
@@ -46,3 +46,35 @@
           - cephadm
           - ceph-common
         state: present
+
+    - name: Disable ceph traffic in default zone
+      ansible.posix.firewalld:
+        service: ceph
+        permanent: true
+        state: disabled
+        immediate: true
+
+    - name: Disable ceph-mon traffic in default zone
+      ansible.posix.firewalld:
+        service: ceph-mon
+        permanent: true
+        state: disabled
+        immediate: true
+
+    - name: Disable 9283/tcp traffic in default zone
+      ansible.posix.firewalld:
+        port: 9283/tcp
+        permanent: true
+        state: disabled
+        immediate: true
+
+    - name: Get ceph.pub contents
+      ansible.builtin.shell: cat /etc/ceph/ceph.pub
+      register: ceph_pub
+      delegate_to: manager-01
+      run_once: true
+
+    - name: Distribute ceph.pub to hosts
+      ansible.builtin.lineinfile:
+        path: /home/ansible/.ssh/authorized_keys
+        line: "{{ ceph_pub.stdout }}"

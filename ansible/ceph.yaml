@@ -98,3 +98,17 @@
       shell: ceph fs volume create shared
       delegate_to: manager-01
       run_once: true
+
+    - name: Create a "/mnt/shared" directory if it does not exist
+      ansible.builtin.file:
+        path: /mnt/shared
+        state: directory
+        mode: '0755'
+
+    - name: Mount the CEPH "shared" volume
+      ansible.posix.mount:
+        src: admin@.shared=/
+        path: /mnt/shared
+        opts: mon_addr=10.0.0.1:6789,noatime,_netdev
+        state: mounted
+        fstype: ceph

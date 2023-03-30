@@ -79,7 +79,7 @@
       run_once: true
       when: not ceph_conf.stat.exists
 
-    - name: Get ceph.pub contents
+    - name: Get /etc/ceph/ceph.pub contents
       ansible.builtin.shell: cat /etc/ceph/ceph.pub
       register: ceph_pub
       delegate_to: manager-01
@@ -105,7 +105,7 @@
       delegate_to: manager-01
       run_once: true
 
-    - name: Create volume named "shared"
+    - name: Create CEPH volume named "shared"
       shell: ceph fs volume create shared
       delegate_to: manager-01
       run_once: true
@@ -117,8 +117,11 @@
         mode: '0755'
 
     - name: Wait for CEPH "shared" volume to become available
-      ansible.builtin.wait_for:
-        timeout: 30
+      shell: ceph health
+      register: result
+      until: result.stdout == "HEALTH_OK"
+      retries: 30
+      delay: 10
 
     - name: Mount the CEPH "shared" volume
       ansible.posix.mount:
@@ -127,9 +130,3 @@
         opts: mon_addr=10.0.0.1:6789,noatime,_netdev
         state: mounted
         fstype: ceph
-
-
-        # register: result
-        # until: result.rc == 0
-        # retries: 6
-        # delay: 10

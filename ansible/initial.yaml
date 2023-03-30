@@ -54,14 +54,14 @@
         commands: ALL
         nopassword: true
 
-    # - name: Disable remote login for root
-    #   lineinfile:
-    #     path: /etc/ssh/sshd_config
-    #     state: present
-    #     regexp: '^#?PermitRootLogin'
-    #     line: 'PermitRootLogin no'
-    #     backup: true
-    #   notify: Restart sshd
+    - name: Disable remote login for root
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        state: present
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+        backup: true
+      notify: Restart sshd
 
   handlers:
     - name: Restart sshd

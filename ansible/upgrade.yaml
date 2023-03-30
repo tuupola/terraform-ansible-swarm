@@ -8,6 +8,8 @@
       ansible.builtin.dnf:
         name: "*"
         state: latest
+        allowerasing: true
+        nobest: true
         exclude:
           - docker-*
           - containerd.io

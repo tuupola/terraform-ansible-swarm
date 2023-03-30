@@ -79,12 +79,17 @@
         path: /home/ansible/.ssh/authorized_keys
         line: "{{ ceph_pub.stdout }}"
 
-    - name: Add manager-02 to CEPH cluster
+    - name: Add manager-02 to the cluster
       shell: ceph orch host add manager-02 10.0.0.2 --labels _admin
       delegate_to: manager-01
       run_once: true
 
-    - name: Add manager-03 to CEPH cluster
+    - name: Add manager-03 to the cluster
       shell: ceph orch host add manager-03 10.0.0.3 --labels _admin
+      delegate_to: manager-01
+      run_once: true
+
+    - name: Add all available disks to the cluster
+      shell: ceph orch apply osd --all-available-devices
       delegate_to: manager-01
       run_once: true

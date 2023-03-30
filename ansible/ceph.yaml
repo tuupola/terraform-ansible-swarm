@@ -93,3 +93,8 @@
       shell: ceph orch apply osd --all-available-devices
       delegate_to: manager-01
       run_once: true
+
+    - name: Create volume named "shared"
+      shell: ceph fs volume create shared
+      delegate_to: manager-01
+      run_once: true

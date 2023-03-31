@@ -1,5 +1,6 @@
 - import_playbook: bootstrap.yaml
 - import_playbook: users.yaml
+- import_playbook: host.yaml
 - import_playbook: upgrade.yaml
 - import_playbook: firewall.yaml
 - import_playbook: docker.yaml

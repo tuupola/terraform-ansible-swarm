@@ -45,11 +45,3 @@
         permanent: true
         state: enabled
         immediate: true
-
-    # - name: Enable Docker swarm traffic in internal zone
-    #   ansible.posix.firewalld:
-    #     service: docker-swarm
-    #     zone: internal
-    #     permanent: true
-    #     state: enabled
-    #     immediate: true

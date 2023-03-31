@@ -16,7 +16,7 @@
       args:
         creates: /etc/yum.repos.d/docker-ce.repo
 
-    - name: Install Docker
+    - name: Install Docker CE
       ansible.builtin.dnf:
         name:
           - docker-ce
@@ -73,18 +73,15 @@
       ansible.builtin.debug:
         var: ansible_eth1.ipv4.address
 
-    - name: Print the swarm facts
-      ansible.builtin.debug:
-        var: hostvars[groups['managers'][0]].swarm
+    # - name: Print the swarm facts
+    #   ansible.builtin.debug:
+    #     var: hostvars[groups['managers'][0]].swarm
 
     - name: Join the other managers to the swarm
       community.docker.docker_swarm:
         state: join
         advertise_addr: eth1
         join_token: "{{ hostvars[groups['managers'][0]].swarm.swarm_facts.JoinTokens.Manager }}"
-        #join_token: "{{ swarm.swarm_facts.JoinTokens.Manager }}"
-        #join_token: "{{ hostvars['localhost'].manager_token }}"
-        #remote_addrs: [ "{{ hostvars['node-01'].ansible_eth1.ipv4.address }}" ]
         remote_addrs: [ "{{ hostvars[groups['managers'][0]]['ansible_eth1']['ipv4']['address'] }}" ]
 
 - hosts: workers
@@ -96,7 +93,5 @@
       community.docker.docker_swarm:
         state: join
         advertise_addr: eth1
-        #join_token: "{{ hostvars['node-01'].swarm.swarm_facts.JoinTokens.Worker }}"
-        #join_token: "{{ swarm.swarm_facts.JoinTokens.Manager }}"
         join_token: "{{ hostvars[groups['managers'][0]].swarm.swarm_facts.JoinTokens.Worker }}"
         remote_addrs: [ "{{ hostvars[groups['managers'][0]]['ansible_eth1']['ipv4']['address'] }}" ]

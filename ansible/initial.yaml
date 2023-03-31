@@ -1,14 +1,5 @@
 ---
 - hosts: all
-  become: true
-  gather_facts: false
-  tasks:
-    - name: Bootstrap Python 3
-      remote_user: root
-      ansible.builtin.raw: dnf install -y python3
-      ignore_unreachable: true
-
-- hosts: all
   gather_facts: false
   tasks:
     - name: Test SSH connection with the default user

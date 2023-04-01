@@ -55,6 +55,11 @@
         backup: true
       notify: Restart sshd
 
+    - name: "Use {{ initial_user }} user"
+      connection: local
+      set_fact:
+        ansible_ssh_user: "{{ initial_user }}"
+
   handlers:
     - name: Restart sshd
       systemd:

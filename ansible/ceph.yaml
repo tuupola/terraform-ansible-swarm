@@ -2,12 +2,12 @@
 - hosts: all
   become: true
 
-  name: Install CEPH
+  name: Install CEPH binaries
   tasks:
-    - name: Add CEPH $basearch repository
+    - name: Add CEPH base repository
       ansible.builtin.yum_repository:
         name: ceph
-        description: Ceph $basearch
+        description: CEPH base
         baseurl: https://download.ceph.com/rpm-quincy/el8/$basearch
         file: ceph
         gpgkey: https://download.ceph.com/keys/release.asc
@@ -17,7 +17,7 @@
     - name: Add CEPH noarch repository
       ansible.builtin.yum_repository:
         name: ceph-noarch
-        description: Ceph noarch
+        description: CEPH noarch
         baseurl: https://download.ceph.com/rpm-quincy/el8/noarch
         file: ceph
         gpgkey: https://download.ceph.com/keys/release.asc
@@ -27,7 +27,7 @@
     - name: Add CEPH source repository
       ansible.builtin.yum_repository:
         name: ceph-source
-        description: Ceph SRPMS
+        description: CEPH SRPMS
         baseurl: https://download.ceph.com/rpm-quincy/el8/SRPMS
         file: ceph
         gpgkey: https://download.ceph.com/keys/release.asc
@@ -40,52 +40,36 @@
           - epel-release
         state: present
 
-    - name: Install cephadm and ceph-common
+    - name: Install CEPH and dependencies
       ansible.builtin.dnf:
         name:
           - cephadm
           - ceph-common
         state: present
 
-    - name: Disable ceph traffic in default zone
-      ansible.posix.firewalld:
-        service: ceph
-        permanent: true
-        state: disabled
-        immediate: true
+- hosts: all
+  become: true
 
-    - name: Disable ceph-mon traffic in default zone
-      ansible.posix.firewalld:
-        service: ceph-mon
-        permanent: true
-        state: disabled
-        immediate: true
-
-    - name: Disable 9283/tcp traffic in default zone
-      ansible.posix.firewalld:
-        port: 9283/tcp
-        permanent: true
-        state: disabled
-        immediate: true
-
-    - name: Check for /etc/ceph/ceph.conf
+  name: Initialise CEPH cluster
+  tasks:
+    - name: Check for existing config file
       stat:
         path: /etc/ceph/ceph.conf
       register: ceph_conf
 
-    - name: Bootstap CEPH cluster
+    - name: Bootstap the cluster
       ansible.builtin.shell: cephadm bootstrap --mon-ip 10.0.0.1 --ssh-user ansible --skip-dashboard --skip-monitoring-stack --skip-firewalld
       delegate_to: manager-01
       run_once: true
       when: not ceph_conf.stat.exists
 
-    - name: Get /etc/ceph/ceph.pub contents
+    - name: Get public key contents
       ansible.builtin.shell: cat /etc/ceph/ceph.pub
       register: ceph_pub
       delegate_to: manager-01
       run_once: true
 
-    - name: Distribute ceph.pub to hosts
+    - name: Distribute the public key to all hosts
       ansible.builtin.lineinfile:
         path: /home/ansible/.ssh/authorized_keys
         line: "{{ ceph_pub.stdout }}"
@@ -105,25 +89,56 @@
       delegate_to: manager-01
       run_once: true
 
-    - name: Create CEPH volume named "shared"
+- hosts: all
+  become: true
+
+  name: Block CEPH traffic in the public zone
+  tasks:
+    - name: Disable ceph traffic in the public zone
+      ansible.posix.firewalld:
+        service: ceph
+        permanent: true
+        state: disabled
+        immediate: true
+
+    - name: Disable ceph-mon traffic in the public zone
+      ansible.posix.firewalld:
+        service: ceph-mon
+        permanent: true
+        state: disabled
+        immediate: true
+
+    - name: Disable 9283/tcp traffic in the public zone
+      ansible.posix.firewalld:
+        port: 9283/tcp
+        permanent: true
+        state: disabled
+        immediate: true
+
+    # - name: Create a "/mnt/shared" directory if it does not exist
+    #   ansible.builtin.file:
+    #     path: /mnt/shared
+    #     state: directory
+    #     mode: '0755'
+
+- hosts: all
+  become: true
+
+  name: Create and mount a CEPH volume named "shared"
+  tasks:
+    - name: Create the volume
       shell: ceph fs volume create shared
       delegate_to: manager-01
       run_once: true
 
-    - name: Create a "/mnt/shared" directory if it does not exist
-      ansible.builtin.file:
-        path: /mnt/shared
-        state: directory
-        mode: '0755'
-
-    - name: Wait for CEPH "shared" volume to become available
+    - name: Wait for the volume to become available
       shell: ceph health
       register: result
       until: result.stdout == "HEALTH_OK"
       retries: 30
       delay: 10
 
-    - name: Mount the CEPH "shared" volume
+    - name: Mount the new volume to /mnt/shared
       ansible.posix.mount:
         src: admin@.shared=/
         path: /mnt/shared

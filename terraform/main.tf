@@ -13,11 +13,11 @@ provider "linode" {
 
 locals {
   node_settings = {
-    "manager-01" = { role = "manager", region = "ap-south", type = "g6-standard-4", vlan_ipam_address = "10.0.0.1/24" },
-    "manager-02" = { role = "manager", region = "ap-south", type = "g6-standard-4", vlan_ipam_address = "10.0.0.2/24" },
-    "manager-03" = { role = "manager", region = "ap-south", type = "g6-standard-4", vlan_ipam_address = "10.0.0.3/24" }
+    "manager-01" = { role = "manager", region = "ap-south", type = "g6-standard-2", vlan_ipam_address = "10.0.0.1/24" },
+    "manager-02" = { role = "manager", region = "ap-south", type = "g6-standard-2", vlan_ipam_address = "10.0.0.2/24" },
+    "manager-03" = { role = "manager", region = "ap-south", type = "g6-standard-2", vlan_ipam_address = "10.0.0.3/24" }
 
-    "worker-01" = { role = "worker", region = "ap-south", type = "g6-standard-4", vlan_ipam_address = "10.0.0.6/24" },
+    #"worker-01" = { role = "worker", region = "ap-south", type = "g6-standard-2", vlan_ipam_address = "10.0.0.6/24" },
   }
 }
 
@@ -68,7 +68,7 @@ resource "linode_instance_disk" "boot" {
 
   label     = "boot"
   linode_id = linode_instance.nodes[each.key].id
-  size      = 20480
+  size      = 30720
 
   image           = "linode/rocky8"
   root_pass       = var.root_pass
@@ -89,7 +89,7 @@ resource "linode_instance_disk" "storage" {
 
   label      = "storage"
   linode_id  = linode_instance.nodes[each.key].id
-  size       = linode_instance.nodes[each.key].specs.0.disk - 256 - 20480
+  size       = linode_instance.nodes[each.key].specs.0.disk - 256 - 30720
   filesystem = "raw"
 }
 

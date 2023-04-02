@@ -30,7 +30,7 @@ resource "linode_instance" "nodes" {
   type   = each.value.type
   tags   = [each.value.role]
   group  = "example"
-
+  private_ip = true
   # # region = "eu-central"
   # #  curl https://api.linode.com/v4/linode/types | jq
   # #type            = "g6-standard-1" # Linode 2 GB
@@ -91,6 +91,53 @@ resource "linode_instance_disk" "storage" {
   linode_id  = linode_instance.nodes[each.key].id
   size       = linode_instance.nodes[each.key].specs.0.disk - 256 - 30720
   filesystem = "raw"
+}
+
+
+resource "linode_nodebalancer" "swarm_lb" {
+    label = "swarm-lb"
+    region = "ap-south"
+    #client_conn_throttle = 60
+}
+
+resource "linode_nodebalancer_config" "swarm_lb_http_config" {
+    nodebalancer_id = linode_nodebalancer.swarm_lb.id
+    port = 80
+    protocol = "tcp"
+    check = "connection"
+    check_attempts = 3
+    check_timeout = 30
+    algorithm = "roundrobin"
+}
+
+resource "linode_nodebalancer_config" "swarm_lb_https_config" {
+    nodebalancer_id = linode_nodebalancer.swarm_lb.id
+    port = 443
+    protocol = "tcp"
+    check = "connection"
+    check_attempts = 3
+    check_timeout = 30
+    algorithm = "roundrobin"
+}
+
+resource "linode_nodebalancer_node" "swarm_lb_http_node" {
+    for_each = local.node_settings
+
+    nodebalancer_id = linode_nodebalancer.swarm_lb.id
+    config_id = linode_nodebalancer_config.swarm_lb_http_config.id
+    address = "${linode_instance.nodes[each.key].private_ip_address}:80"
+    label = "swarm-lb-http-node"
+    #weight = 50
+}
+
+resource "linode_nodebalancer_node" "swarm_lb_https_node" {
+    for_each = local.node_settings
+
+    nodebalancer_id = linode_nodebalancer.swarm_lb.id
+    config_id = linode_nodebalancer_config.swarm_lb_https_config.id
+    address = "${linode_instance.nodes[each.key].private_ip_address}:443"
+    label = "swarm-lb-https-node"
+    #weight = 50
 }
 
 resource "local_file" "ansible_inventory" {

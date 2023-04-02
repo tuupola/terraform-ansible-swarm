@@ -1,0 +1,67 @@
+# DOMAIN=example.com CREDENTIALS=$(htpasswd -nB admin) docker stack deploy -c traefik.yaml traefik
+version: "3.9"
+
+# Expose services via network called public. All services you want
+# to expose must join this network. Another popular would be proxy.
+networks:
+  default:
+    name: public
+
+volumes:
+  certificates:
+
+services:
+  traefik:
+    image: traefik:2.9.9
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certificates:/certificates
+    ports:
+      - 80:80
+      - 443:443
+    command:
+      - --providers.docker
+      - --providers.docker.swarmmode
+      - --providers.docker.exposedbydefault=false
+      - --entryPoints.http.address=:80
+      - --entryPoints.https.address=:443
+      - --certificatesresolvers.le.acme.email=hostmaster@${DOMAIN:-localhost}
+      - --certificatesresolvers.le.acme.storage=/certificates/acme.json
+      - --certificatesresolvers.le.acme.tlschallenge=true
+      # Uncomment when testing to avoid hitting rate limits.
+      #- --certificatesresolvers.le.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
+      - --accesslog
+      - --api
+      - --log
+      - --log.level=DEBUG
+    deploy:
+      # HA setup so we will run Traefik on each manager
+      mode: global
+      placement:
+        constraints: [node.role == manager]
+      labels:
+        # Make Traefik dashboard available via Traefik proxy.
+        - traefik.enable=true
+        - traefik.docker.network=public
+        - traefik.http.services.traefik.loadbalancer.server.port=8080
+
+        # Serve pages via https. Encrypt with certificate from Let's Encrypt.
+        - traefik.http.routers.traefik-https.rule=Host(`traefik.${DOMAIN:-localhost}`)
+        - traefik.http.routers.traefik-https.entrypoints=https
+        - traefik.http.routers.traefik-https.tls=true
+        - traefik.http.routers.traefik-https.tls.certresolver=le
+        - traefik.http.routers.traefik-https.service=api@internal
+        - traefik.http.routers.traefik-https.middlewares=auth
+
+        # Redirect http traffic to https.
+        - traefik.http.routers.traefik-http.rule=Host(`traefik.${DOMAIN:-localhost}`)
+        - traefik.http.routers.traefik-http.entrypoints=http
+        - traefik.http.routers.traefik-http.middlewares=https-redirect
+        - traefik.http.routers.traefik-http.service=api@internal
+
+        # Set default username and password. See top of this file for an example.
+        - traefik.http.middlewares.auth.basicauth.users=${CREDENTIALS:?}
+
+        # Create the http to https middleware.
+        - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
+        - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true

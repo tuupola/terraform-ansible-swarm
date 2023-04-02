@@ -1,0 +1,63 @@
+# export INITIAL_PASSWORD=$(htpasswd -nB admin | cut -d ":" -f 2)
+# DOMAIN=example.com  docker stack deploy -c portainer.yaml portainer
+version: "3.9"
+
+# Portainer communicates with agents using "portainer" network.
+# Portainer dashboard is exposed via "public" network.
+networks:
+  default:
+    name: portainer
+  public:
+    external: true
+
+volumes:
+  data:
+
+services:
+  agent:
+    image: portainer/agent:2.17.1-alpine
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/volumes:/var/lib/docker/volumes
+    networks:
+      - default
+    deploy:
+      mode: global
+      placement:
+        constraints: [node.platform.os == linux]
+
+  portainer:
+    image: portainer/portainer-ce:2.17.1-alpine
+    # --admin-password is only used when first creating the admin user.
+    command: -H tcp://tasks.agent:9001 --tlsskipverify --admin-password ${INITIAL_PASSWORD:-admin}
+    volumes:
+      - data:/data
+    networks:
+      - default
+      - public
+    deploy:
+      # You could run Portainer in HA mode but IMO one instance is enough.
+      # mode: global
+      mode: replicated
+      replicas: 1
+      placement:
+        # Since we use CEPH for docker volumes can place to any manager node.
+        constraints: [node.role == manager]
+        # You could also force placement to specific node with labels.
+        # constraints: [node.labels.com.example.service == portainer]
+      labels:
+        # Make Traefik dashboard available via Traefik proxy.
+        - traefik.enable=true
+        - traefik.docker.network=public
+        - traefik.http.services.portainer.loadbalancer.server.port=9000
+
+        # Serve pages via https. Encrypt with certificate from Let's Encrypt.
+        - traefik.http.routers.portainer-https.rule=Host(`portainer.${DOMAIN:-localhost}`)
+        - traefik.http.routers.portainer-https.entrypoints=https
+        - traefik.http.routers.portainer-https.tls=true
+        - traefik.http.routers.portainer-https.tls.certresolver=le
+
+        # Redirect http traffic to https. The middleware is defined in traefik.yaml.
+        - traefik.http.routers.portainer-http.rule=Host(`portainer.${DOMAIN:-localhost}`)
+        - traefik.http.routers.portainer-http.entrypoints=http
+        - traefik.http.routers.portainer-http.middlewares=https-redirect

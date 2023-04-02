@@ -1,4 +1,4 @@
-# DOMAIN=example.com  docker stack deploy -c whoami.yaml whoami
+# DOMAIN=example.com docker stack deploy -c whoami.yaml whoami
 version: "3.9"
 
 # Service is exposed via "public" network.

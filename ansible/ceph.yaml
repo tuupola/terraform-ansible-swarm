@@ -115,12 +115,6 @@
         state: disabled
         immediate: true
 
-    # - name: Create a "/mnt/shared" directory if it does not exist
-    #   ansible.builtin.file:
-    #     path: /mnt/shared
-    #     state: directory
-    #     mode: '0755'
-
 - hosts: all
   become: true
 
@@ -138,10 +132,10 @@
       retries: 30
       delay: 10
 
-    - name: Mount the new volume to /mnt/shared
+    - name: Mount the shared volume to /var/lib/docker/volumes
       ansible.posix.mount:
         src: admin@.shared=/
-        path: /mnt/shared
+        path: /var/lib/docker/volumes
         opts: mon_addr=10.0.0.1:6789,noatime,_netdev
         state: mounted
         fstype: ceph

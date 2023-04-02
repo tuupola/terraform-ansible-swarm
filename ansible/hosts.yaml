@@ -1,0 +1,19 @@
+---
+- hosts: all
+  become: true
+
+  tasks:
+    - name: Set a hostname to match inventory
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname_short }}"
+        use: systemd
+
+    - name: Add VLAN mappings to /etc/hosts
+      ansible.builtin.blockinfile:
+        path: /etc/hosts
+        backup: yes
+        block: |
+          {% for host in groups['all'] %}
+          {{ hostvars[host]['ansible_facts']['eth1']['ipv4']['address'] }} {{ hostvars[host]['ansible_facts']['fqdn'] }} {{ hostvars[host]['ansible_facts']['hostname'] }}
+          {% endfor %}
+        marker: "# {mark} ANSIBLE MANAGED BLOCK"

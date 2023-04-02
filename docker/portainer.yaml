@@ -1,8 +1,8 @@
 # DOMAIN=example.com docker stack deploy -c portainer.yaml portainer
 version: "3.9"
 
-# Portainer communicates with agents using portainer network.
-# Portainer dashboard is exposed via public network.
+# Portainer communicates with agents using "portainer" network.
+# Portainer dashboard is exposed via "public" network.
 networks:
   default:
     name: portainer
@@ -34,13 +34,15 @@ services:
       - default
       - public
     deploy:
+      # You could run Portainer in HA mode but IMO one instance is enough.
+      # mode: global
       mode: replicated
       replicas: 1
       placement:
         # Since we use CEPH for docker volumes can place to any manager node.
         constraints: [node.role == manager]
         # You could also force placement to specific node with labels.
-        #constraints: [node.labels.com.example.service == portainer]
+        # constraints: [node.labels.com.example.service == portainer]
       labels:
         # Make Traefik dashboard available via Traefik proxy.
         - traefik.enable=true

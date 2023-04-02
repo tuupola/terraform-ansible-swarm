@@ -1,4 +1,5 @@
-# DOMAIN=example.com docker stack deploy -c portainer.yaml portainer
+# export INITIAL_PASSWORD=$(htpasswd -nB admin | cut -d ":" -f 2)
+# DOMAIN=example.com  docker stack deploy -c portainer.yaml portainer
 version: "3.9"
 
 # Portainer communicates with agents using "portainer" network.
@@ -27,7 +28,8 @@ services:
 
   portainer:
     image: portainer/portainer-ce:2.17.1-alpine
-    command: -H tcp://tasks.agent:9001 --tlsskipverify
+    # --admin-password is only used when first creating the admin user.
+    command: -H tcp://tasks.agent:9001 --tlsskipverify --admin-password ${INITIAL_PASSWORD:-admin}
     volumes:
       - data:/data
     networks:

@@ -1,0 +1,32 @@
+# DOMAIN=example.com  docker stack deploy -c whoami.yaml whoami
+version: "3.9"
+
+# Service is exposed via "public" network.
+networks:
+  default:
+    name: public
+    external: true
+
+services:
+  whoami:
+    image: containous/whoami:v1.5.0
+    deploy:
+      # mode: global
+      mode: replicated
+      replicas: 3
+      labels:
+        # Make service available via Traefik proxy.
+        - traefik.enable=true
+        - traefik.docker.network=public
+        - traefik.http.services.whoami.loadbalancer.server.port=80
+
+        # Serve pages via https. Encrypt with certificate from Let's Encrypt.
+        - traefik.http.routers.whoami-https.rule=Host(`whoami.${DOMAIN:-localhost}`)
+        - traefik.http.routers.whoami-https.entrypoints=https
+        - traefik.http.routers.whoami-https.tls=true
+        - traefik.http.routers.whoami-https.tls.certresolver=le
+
+        # Redirect http traffic to https. The middleware is defined in traefik.yaml.
+        - traefik.http.routers.whoami-http.rule=Host(`whoami.${DOMAIN:-localhost}`)
+        - traefik.http.routers.whoami-http.entrypoints=http
+        - traefik.http.routers.whoami-http.middlewares=https-redirect

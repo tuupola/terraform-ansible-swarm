@@ -25,8 +25,3 @@ services:
         - traefik.http.routers.whoami-https.entrypoints=https
         - traefik.http.routers.whoami-https.tls=true
         - traefik.http.routers.whoami-https.tls.certresolver=le
-
-        # Redirect http traffic to https. The middleware is defined in traefik.yaml.
-        - traefik.http.routers.whoami-http.rule=Host(`whoami.${DOMAIN:-localhost}`)
-        - traefik.http.routers.whoami-http.entrypoints=http
-        - traefik.http.routers.whoami-http.middlewares=https-redirect

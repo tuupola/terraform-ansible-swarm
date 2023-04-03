@@ -56,8 +56,3 @@ services:
         - traefik.http.routers.portainer-https.entrypoints=https
         - traefik.http.routers.portainer-https.tls=true
         - traefik.http.routers.portainer-https.tls.certresolver=le
-
-        # Redirect http traffic to https. The middleware is defined in traefik.yaml.
-        - traefik.http.routers.portainer-http.rule=Host(`portainer.${DOMAIN:-localhost}`)
-        - traefik.http.routers.portainer-http.entrypoints=http
-        - traefik.http.routers.portainer-http.middlewares=https-redirect

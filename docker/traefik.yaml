@@ -25,6 +25,11 @@ services:
       - --providers.docker.exposedbydefault=false
       - --entryPoints.http.address=:80
       - --entryPoints.https.address=:443
+      # Redirect all http traffic to https
+      - --entrypoints.http.http.redirections.entryPoint.to=https
+      - --entrypoints.http.http.redirections.entryPoint.scheme=https
+      - --entrypoints.http.http.redirections.entrypoint.permanent=true
+      # Certificates come from Let's Encrypt
       - --certificatesresolvers.le.acme.email=hostmaster@${DOMAIN:-localhost}
       - --certificatesresolvers.le.acme.storage=/certificates/acme.json
       - --certificatesresolvers.le.acme.tlschallenge=true
@@ -53,15 +58,5 @@ services:
         - traefik.http.routers.traefik-https.service=api@internal
         - traefik.http.routers.traefik-https.middlewares=auth
 
-        # Redirect http traffic to https.
-        - traefik.http.routers.traefik-http.rule=Host(`traefik.${DOMAIN:-localhost}`)
-        - traefik.http.routers.traefik-http.entrypoints=http
-        - traefik.http.routers.traefik-http.middlewares=https-redirect
-        - traefik.http.routers.traefik-http.service=api@internal
-
         # Set default username and password. See top of this file for an example.
         - traefik.http.middlewares.auth.basicauth.users=${CREDENTIALS:?}
-
-        # Create the http to https middleware.
-        - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
-        - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true

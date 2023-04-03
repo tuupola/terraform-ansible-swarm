@@ -1,0 +1,84 @@
+# DOMAIN=example.com docker stack deploy -c monitoring.yaml monitoring
+version: "3.9"
+
+# Prometheus scrapes nodes using "monitoring" network.
+# Prometheus and Grafana dashboards are exposed via "public" network.
+networks:
+  default:
+    name: monitoring
+  public:
+    external: true
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+configs:
+  prometheus_config:
+    file: ./etc/prometheus/prometheus.yaml
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.42.0
+    volumes:
+      - prometheus_data:/prometheus
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yaml
+    command:
+      - --config.file=/etc/prometheus/prometheus.yaml
+      - --storage.tsdb.path=/prometheus
+    networks:
+      - public
+      - default
+    extra_hosts:
+      # Add physical node VLAN ip addresses to /etc/hosts.
+      - "manager-01:10.0.0.1"
+      - "manager-02:10.0.0.2"
+      - "manager-03:10.0.0.3"
+      # TODO: this should be automatic
+      # - "manager-04:10.0.0.4"
+      # - "manager-05:10.0.0.5"
+      # - "worker-01:10.0.0.6"
+      # - "worker-02:10.0.0.7"
+      # - "worker-03:10.0.0.8"
+      # - "worker-04:10.0.0.9"
+      # - "worker-05:10.0.0.10"
+    deploy:
+      # Since we use CEPH for volumes Prometheus can placed to any node.
+      mode: replicated
+      replicas: 1
+      labels:
+        # Make Prometheus console available via Traefik proxy.
+        - traefik.enable=true
+        - traefik.docker.network=public
+        - traefik.http.services.prometheus.loadbalancer.server.port=9090
+
+        # Serve pages via https. Encrypt with certificate from Let's Encrypt.
+        - traefik.http.routers.prometheus-https.rule=Host(`prometheus.${DOMAIN:-localhost}`)
+        - traefik.http.routers.prometheus-https.entrypoints=https
+        - traefik.http.routers.prometheus-https.tls=true
+        - traefik.http.routers.prometheus-https.tls.certresolver=le
+
+  grafana:
+    image: grafana/grafana:9.4.3
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - default
+      - public
+    deploy:
+      # Since we use CEPH for volumes Grafana can placed to any node.
+      mode: replicated
+      replicas: 1
+      labels:
+        # Make Grafana available via Traefik proxy.
+        - traefik.enable=true
+        - traefik.docker.network=public
+        - traefik.http.services.grafana.loadbalancer.server.port=3000
+
+        # Serve pages via https. Encrypt with certificate from Let's Encrypt.
+        - traefik.http.routers.grafana-https.rule=Host(`grafana.${DOMAIN:-localhost}`)
+        - traefik.http.routers.grafana-https.entrypoints=https
+        - traefik.http.routers.grafana-https.tls=true
+        - traefik.http.routers.grafana-https.tls.certresolver=le

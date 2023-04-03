@@ -16,6 +16,8 @@ volumes:
 configs:
   prometheus_config:
     file: ./etc/prometheus/prometheus.yaml
+  grafana_datasources:
+    file: ./etc/grafana/provisioning/datasources/prometheus.yaml
 
 services:
   prometheus:
@@ -61,9 +63,12 @@ services:
         - traefik.http.routers.prometheus-https.tls.certresolver=le
 
   grafana:
-    image: grafana/grafana:9.4.3
+    image: grafana/grafana:9.4.7
     volumes:
       - grafana_data:/var/lib/grafana
+    configs:
+      - source: grafana_datasources
+        target: /etc/grafana/provisioning/datasources/prometheus.yaml
     networks:
       - default
       - public
